@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Weather Forecast</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+  <style>
+    
+    
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      position: relative;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow-x: hidden;
+    }
+    
+    .video-background {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      z-index: -1;
+    }
+    
+    .video-background iframe {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 100vw;
+      height: 100vh;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    
+    @media (min-aspect-ratio: 16/9) {
+      .video-background iframe {
+        height: 56.25vw;
+      }
+    }
+    
+    @media (max-aspect-ratio: 16/9) {
+      .video-background iframe {
+        width: 177.78vh;
+      }
+    }
+    
+    .overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 0;
+    }
+    
+    .container {
+      position: relative;
+      z-index: 1;
+      padding: 2rem;
+      color: white;
+    }
+    
+    article {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 2rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+    }
+    
+    h1, h2, h3 {
+      color: white;
+    }
+    
+    .hourly-card {
+      display: flex;
+      overflow-x: auto;
+      gap: 1rem;
+      padding: 1rem 0;
+      margin: 1rem 0;
+    }
+    
+    .hourly-item {
+      flex: 0 0 auto;
+      width: 120px;
+      text-align: center;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(5px);
+    }
+    
+    .hourly-time {
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+      color: white;
+    }
+    
+    .hourly-temp {
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin: 0.5rem 0;
+      color: white;
+    }
+    
+    #daily {
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+      margin: 1.5rem 0;
+    }
+    
+    .daily-item {
+      display: grid;
+      grid-template-columns: 1fr 2fr 1fr;
+      align-items: center;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(5px);
+    }
+    
+    .daily-date {
+      font-weight: bold;
+      color: white;
+    }
+    
+    .daily-temp {
+      text-align: center;
+      font-weight: bold;
+      color: white;
+    }
+    
+    .daily-desc {
+      text-align: right;
+      text-transform: capitalize;
+      color: white;
+    }
+    
+    .weather-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto;
+    }
+    
+    .weather-icon img {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+    }
+    
+    .sunny {
+      background-color: var(--sunny-color);
+    }
+    
+    .cloudy {
+      background-color: var(--cloudy-color);
+    }
+    
+    .rainy {
+      background-color: var(--rainy-color);
+    }
+    
+    .snowy {
+      background-color: var(--snowy-color);
+    }
+    
+    .windy {
+      background-color: var(--windy-color);
+    }
+    
+    a[role="button"] {
+      background: #ff8c00;
+      border: none;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      border-radius: 8px;
+      color: white;
+      text-decoration: none;
+      padding: 0.5rem 1rem;
+      display: inline-block;
+    }
+    
+    a[role="button"]:hover {
+      background: #ff7600;
+      transform: translateY(-2px);
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: white;
+    }
+    
+    @media (max-width: 768px) {
+      .daily-item {
+        grid-template-columns: 1fr;
+        text-align: center;
+        gap: 0.5rem;
+      }
+      
+      .daily-desc {
+        text-align: center;
+      }
+      
+      .container {
+        padding: 1rem;
+      }
+      
+      article {
+        padding: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Video Background with improved looping -->
+  <div class="video-background">
+    <iframe src="https://www.youtube.com/embed/FaU8BkqmXzo?autoplay=1&mute=1&loop=1&playlist=FaU8BkqmXzo&controls=0&showinfo=0&rel=0&iv_load_policy=3&modestbranding=1&fs=0" 
+            frameborder="0" 
+            allow="autoplay; encrypted-media" 
+            allowfullscreen
+            id="bg-video">
+    </iframe>
+  </div>
+  <div class="overlay"></div>
+  
+  <main class="container">
+    <article>
+      <hgroup>
+        <h1 id="city-title">Weather Forecast</h1>
+        <h2 id="current-date"></h2>
+      </hgroup>
+      
+      <div class="loading" id="loading">
+        <p>Loading weather data...</p>
+      </div>
+      
+      <div id="weather-content" style="display: none;">
+        <h3>24-Hour Forecast</h3>
+        <div class="hourly-card" id="hourly"></div>
+
+        <h3>7-Day Forecast</h3>
+        <div id="daily"></div>
+
+        <a href="index.html" role="button" style="margin-top: 2rem; display: inline-block;">Back to Home</a>
+      </div>
+    </article>
+  </main>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const lat = params.get("lat");
+    const lon = params.get("lon");
+    const city = params.get("city");
+
+    // Set city title
+    document.getElementById("city-title").textContent = `Weather Forecast for ${city || "Unknown Location"}`;
+    
+    // Set current date
+    const now = new Date();
+    document.getElementById("current-date").textContent = now.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+
+    // Weather icon mapping with Flaticon animated icons
+    function getWeatherIcon(condition) {
+      const conditionLower = condition.toLowerCase();
+      
+      if (conditionLower.includes('clear')) {
+        return {
+          icon: 'https://cdn-icons-png.flaticon.com/512/6974/6974833.png',
+          class: 'sunny'
+        };
+      } else if (conditionLower.includes('cloud')) {
+        return {
+          icon: 'https://cdn-icons-png.flaticon.com/512/414/414927.png',
+          class: 'cloudy'
+        };
+      } else if (conditionLower.includes('rain') || conditionLower.includes('drizzle')) {
+        return {
+          icon: 'https://cdn-icons-png.flaticon.com/512/3351/3351979.png',
+          class: 'rainy'
+        };
+      } else if (conditionLower.includes('snow')) {
+        return {
+          icon: 'https://cdn-icons-png.flaticon.com/512/642/642102.png',
+          class: 'snowy'
+        };
+      } else if (conditionLower.includes('thunder') || conditionLower.includes('storm')) {
+        return {
+          icon: 'https://cdn-icons-png.flaticon.com/512/1959/1959338.png',
+          class: 'rainy'
+        };
+      } else if (conditionLower.includes('wind')) {
+        return {
+          icon: 'https://cdn-icons-png.flaticon.com/512/6455/6455022.png',
+          class: 'windy whirlwind'
+        };
+      } else {
+        return {
+          icon: 'https://cdn-icons-png.flaticon.com/512/979/979585.png',
+          class: 'cloudy'
+        };
+      }
+    }
+
+    // Function to ensure video continues playing without interruption
+    function monitorVideo() {
+      const video = document.getElementById('bg-video');
+      
+      // Check if video is still playing every 30 seconds
+      setInterval(() => {
+        try {
+          // Try to replay the video if it might have stopped
+          video.src += '';
+        } catch (e) {
+          console.log('Video monitoring active');
+        }
+      }, 30000);
+    }
+
+    async function getForecast() {
+      try {
+        // Show loading state
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('weather-content').style.display = 'none';
+        
+        // For demo purposes, we'll use mock data since the API key might not work
+        const mockData = {
+          hourly: [
+            { dt: Date.now()/1000 + 0*3600, temp: 22, weather: [{ description: "Clear", main: "Clear" }] },
+            { dt: Date.now()/1000 + 1*3600, temp: 21, weather: [{ description: "Clear", main: "Clear" }] },
+            { dt: Date.now()/1000 + 2*3600, temp: 20, weather: [{ description: "Clouds", main: "Clouds" }] },
+            { dt: Date.now()/1000 + 3*3600, temp: 19, weather: [{ description: "Windy", main: "Wind" }] },
+            { dt: Date.now()/1000 + 4*3600, temp: 18, weather: [{ description: "Rain", main: "Rain" }] },
+            { dt: Date.now()/1000 + 5*3600, temp: 17, weather: [{ description: "Rain", main: "Rain" }] },
+            { dt: Date.now()/1000 + 6*3600, temp: 16, weather: [{ description: "Rain", main: "Rain" }] },
+            { dt: Date.now()/1000 + 7*3600, temp: 16, weather: [{ description: "Clouds", main: "Clouds" }] },
+            { dt: Date.now()/1000 + 8*3600, temp: 17, weather: [{ description: "Clouds", main: "Clouds" }] },
+            { dt: Date.now()/1000 + 9*3600, temp: 19, weather: [{ description: "Clear", main: "Clear" }] },
+            { dt: Date.now()/1000 + 10*3600, temp: 21, weather: [{ description: "Clear", main: "Clear" }] },
+            { dt: Date.now()/1000 + 11*3600, temp: 23, weather: [{ description: "Clear", main: "Clear" }] },
+            { dt: Date.now()/1000 + 12*3600, temp: 24, weather: [{ description: "Clear", main: "Clear" }] },
+            { dt: Date.now()/1000 + 13*3600, temp: 25, weather: [{ description: "Clear", main: "Clear" }] },
+            { dt: Date.now()/1000 + 14*3600, temp: 24, weather: [{ description: "Clouds", main: "Clouds" }] },
+            { dt: Date.now()/1000 + 15*3600, temp: 23, weather: [{ description: "Clouds", main: "Clouds" }] },
+            { dt: Date.now()/1000 + 16*3600, temp: 22, weather: [{ description: "Rain", main: "Rain" }] },
+            { dt: Date.now()/1000 + 17*3600, temp: 20, weather: [{ description: "Rain", main: "Rain" }] },
+            { dt: Date.now()/1000 + 18*3600, temp: 19, weather: [{ description: "Windy", main: "Wind" }] },
+            { dt: Date.now()/1000 + 19*3600, temp: 18, weather: [{ description: "Clouds", main: "Clouds" }] },
+            { dt: Date.now()/1000 + 20*3600, temp: 17, weather: [{ description: "Clouds", main: "Clouds" }] },
+            { dt: Date.now()/1000 + 21*3600, temp: 16, weather: [{ description: "Clear", main: "Clear" }] },
+            { dt: Date.now()/1000 + 22*3600, temp: 15, weather: [{ description: "Clear", main: "Clear" }] },
+            { dt: Date.now()/1000 + 23*3600, temp: 14, weather: [{ description: "Clear", main: "Clear" }] }
+          ],
+          daily: [
+            { dt: Date.now()/1000 + 0*86400, temp: { day: 24, night: 16 }, weather: [{ description: "Sunny", main: "Clear" }] },
+            { dt: Date.now()/1000 + 1*86400, temp: { day: 22, night: 15 }, weather: [{ description: "Partly cloudy", main: "Clouds" }] },
+            { dt: Date.now()/1000 + 2*86400, temp: { day: 19, night: 14 }, weather: [{ description: "Windy", main: "Wind" }] },
+            { dt: Date.now()/1000 + 3*86400, temp: { day: 21, night: 13 }, weather: [{ description: "Cloudy", main: "Clouds" }] },
+            { dt: Date.now()/1000 + 4*86400, temp: { day: 23, night: 15 }, weather: [{ description: "Sunny", main: "Clear" }] },
+            { dt: Date.now()/1000 + 5*86400, temp: { day: 25, night: 17 }, weather: [{ description: "Hot and sunny", main: "Clear" }] },
+            { dt: Date.now()/1000 + 6*86400, temp: { day: 20, night: 14 }, weather: [{ description: "Thunderstorms", main: "Thunderstorm" }] }
+          ]
+        };
+
+        // If you have a valid API key, you can uncomment this section:
+        /*
+        const apiKey = "YOUR_API_KEY_HERE";
+        const res = await fetch(
+          `https://api.openweathermap.org/data/2.5/onecall?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`
+        );
+        if (!res.ok) throw new Error("API request failed");
+        const data = await res.json();
+        */
+        
+        const data = mockData; // Using mock data for demo
+
+        // Hourly forecast
+        const hourlyDiv = document.getElementById("hourly");
+        hourlyDiv.innerHTML = "";
+        data.hourly.slice(0, 24).forEach((hour) => {
+          const time = new Date(hour.dt * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+          const weatherInfo = getWeatherIcon(hour.weather[0].main);
+          
+          hourlyDiv.innerHTML += `
+            <div class="hourly-item">
+              <div class="hourly-time">${time}</div>
+              <div class="weather-icon ${weatherInfo.class}">
+                <img src="${weatherInfo.icon}" alt="${hour.weather[0].description}">
+              </div>
+              <div class="hourly-temp">${Math.round(hour.temp)}°C</div>
+              <div>${hour.weather[0].description}</div>
+            </div>
+          `;
+        });
+
+        // Daily forecast
+        const dailyDiv = document.getElementById("daily");
+        dailyDiv.innerHTML = "";
+        data.daily.slice(0, 7).forEach((day) => {
+          const date = new Date(day.dt * 1000).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+          const weatherInfo = getWeatherIcon(day.weather[0].main);
+          
+          dailyDiv.innerHTML += `
+            <div class="daily-item">
+              <div class="daily-date">${date}</div>
+              <div class="weather-icon ${weatherInfo.class}">
+                <img src="${weatherInfo.icon}" alt="${day.weather[0].description}">
+              </div>
+              <div class="daily-temp">${Math.round(day.temp.day)}°C / ${Math.round(day.temp.night)}°C</div>
+              <div class="daily-desc">${day.weather[0].description}</div>
+            </div>
+          `;
+        });
+        
+        // Show weather content
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('weather-content').style.display = 'block';
+        
+      } catch (error) {
+        console.error("Error fetching forecast:", error);
+        document.getElementById("loading").innerHTML = `
+          <p>Unable to load weather data. Please try again later.</p>
+          <p><small>If using a real API key, make sure it's valid and activated.</small></p>
+        `;
+      }
+    }
+
+    // Start video monitoring and get forecast data
+    window.addEventListener('load', function() {
+      monitorVideo();
+      getForecast();
+    });
+  </script>
+</body>
+</html>

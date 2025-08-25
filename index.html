@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pakistan Weather App</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      position: relative;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow-x: hidden;
+      background: linear-gradient(to bottom, #1e3c72, #2a5298);
+    }
+    
+    .container {
+      position: relative;
+      z-index: 1;
+      padding: 2rem;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    
+    .card {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 2rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      max-width: 500px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    
+    h2 {
+      color: white;
+      text-align: center;
+      margin-bottom: 1.5rem;
+      font-weight: 700;
+    }
+    
+    input, button {
+      border-radius: 8px;
+    }
+    
+    input {
+      background: rgba(255, 255, 255, 0.9);
+    }
+    
+    button {
+      background: #ff8c00;
+      border: none;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+    
+    button:hover {
+      background: #ff7600;
+      transform: translateY(-2px);
+    }
+    
+    #weather-result {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-top: 1.5rem;
+      text-align: center;
+    }
+    
+    #city-name {
+      font-size: 1.8rem;
+      margin-bottom: 0.5rem;
+      color: white;
+    }
+    
+    #temperature {
+      font-size: 2.5rem;
+      font-weight: bold;
+      margin: 0.5rem 0;
+      color: white;
+    }
+    
+    #condition {
+      font-size: 1.2rem;
+      margin: 0.5rem 0;
+      color: white;
+    }
+    
+    #forecast-btn {
+      margin-top: 1rem;
+      background: #4a7cce;
+    }
+    
+    #forecast-btn:hover {
+      background: #3a6cb0;
+    }
+    
+    #error {
+      background: rgba(255, 87, 87, 0.2);
+      padding: 1rem;
+      border-radius: 8px;
+      text-align: center;
+    }
+    
+    .weather-icon {
+      font-size: 4rem;
+      margin: 1rem 0;
+    }
+    
+    .additional-info {
+      display: flex;
+      justify-content: space-around;
+      margin: 1rem 0;
+    }
+    
+    .info-item {
+      text-align: center;
+    }
+    
+    .info-value {
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+    
+    .info-label {
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+    
+    .api-info {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+    }
+    
+    @media (max-width: 768px) {
+      .container {
+        padding: 1rem;
+      }
+      
+      .card {
+        padding: 1.5rem;
+      }
+      
+      #temperature {
+        font-size: 2rem;
+      }
+      
+      .additional-info {
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <div class="card">
+      <h2>Pakistan Weather App</h2>
+      <form id="weather-form">
+        <input type="text" id="city-input" placeholder="Enter city (e.g. Karachi, Islamabad)" required>
+        <button type="submit">Get Weather</button>
+      </form>
+      <div id="weather-result" style="display:none;">
+        <h3 id="city-name"></h3>
+        <div class="weather-icon" id="weather-icon">☀️</div>
+        <p id="temperature"></p>
+        <p id="condition"></p>
+        
+        <div class="additional-info">
+          <div class="info-item">
+            <div class="info-value" id="humidity"></div>
+            <div class="info-label">Humidity</div>
+          </div>
+          <div class="info-item">
+            <div class="info-value" id="wind-speed"></div>
+            <div class="info-label">Wind Speed</div>
+          </div>
+          <div class="info-item">
+            <div class="info-value" id="feels-like"></div>
+            <div class="info-label">Feels Like</div>
+          </div>
+        </div>
+        
+        <button id="forecast-btn">See Full Forecast</button>
+      </div>
+      <p id="error" style="color:white; display:none; background:rgba(255,0,0,0.3); padding:10px; border-radius:5px;">City not found in Pakistan.</p>
+      
+      
+  </main>
+
+  <script>
+    const form = document.getElementById("weather-form");
+    const cityInput = document.getElementById("city-input");
+    const result = document.getElementById("weather-result");
+    const errorMsg = document.getElementById("error");
+    const forecastBtn = document.getElementById("forecast-btn");
+    const weatherIcon = document.getElementById("weather-icon");
+    const humidityEl = document.getElementById("humidity");
+    const windSpeedEl = document.getElementById("wind-speed");
+    const feelsLikeEl = document.getElementById("feels-like");
+
+    let lat, lon, currentCity;
+
+    // Function to set weather icon based on condition
+    function setWeatherIcon(condition) {
+      const conditionLower = condition.toLowerCase();
+      
+      if (conditionLower.includes('clear')) {
+        weatherIcon.textContent = '☀️';
+      } else if (conditionLower.includes('cloud')) {
+        weatherIcon.textContent = '☁️';
+      } else if (conditionLower.includes('rain') || conditionLower.includes('drizzle')) {
+        weatherIcon.textContent = '🌧️';
+      } else if (conditionLower.includes('snow')) {
+        weatherIcon.textContent = '❄️';
+      } else if (conditionLower.includes('thunder') || conditionLower.includes('storm')) {
+        weatherIcon.textContent = '⛈️';
+      } else {
+        weatherIcon.textContent = '🌤️';
+      }
+    }
+
+    // Function to get weather data (using demo data for now)
+    function getWeatherData(city) {
+      // Simulate API delay
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          // Demo data for various Pakistani cities
+          const demoData = {
+            'islamabad': { 
+              name: 'Islamabad', 
+              main: { temp: 28, feels_like: 30, humidity: 65 }, 
+              weather: [{ description: 'Partly cloudy', main: 'Clouds' }], 
+              wind: { speed: 3.5 },
+              coord: { lat: 33.6844, lon: 73.0479 }
+            },
+            'karachi': { 
+              name: 'Karachi', 
+              main: { temp: 35, feels_like: 38, humidity: 70 }, 
+              weather: [{ description: 'Sunny', main: 'Clear' }], 
+              wind: { speed: 2.5 },
+              coord: { lat: 24.8607, lon: 67.0011 }
+            },
+            'lahore': { 
+              name: 'Lahore', 
+              main: { temp: 32, feels_like: 35, humidity: 60 }, 
+              weather: [{ description: 'Mostly sunny', main: 'Clear' }], 
+              wind: { speed: 2.0 },
+              coord: { lat: 31.5497, lon: 74.3436 }
+            },
+            'peshawar': { 
+              name: 'Peshawar', 
+              main: { temp: 30, feels_like: 32, humidity: 55 }, 
+              weather: [{ description: 'Clear sky', main: 'Clear' }], 
+              wind: { speed: 3.0 },
+              coord: { lat: 34.0151, lon: 71.5249 }
+            },
+            'quetta': { 
+              name: 'Quetta', 
+              main: { temp: 25, feels_like: 26, humidity: 40 }, 
+              weather: [{ description: 'Sunny', main: 'Clear' }], 
+              wind: { speed: 4.0 },
+              coord: { lat: 30.1798, lon: 66.9750 }
+            },
+            'default': { 
+              name: city, 
+              main: { temp: 27, feels_like: 29, humidity: 58 }, 
+              weather: [{ description: 'Partly cloudy', main: 'Clouds' }], 
+              wind: { speed: 2.8 },
+              coord: { lat: 33.6844, lon: 73.0479 }
+            }
+          };
+          
+          const cityKey = city.toLowerCase();
+          const data = demoData[cityKey] || demoData['default'];
+          
+          resolve(data);
+        }, 800);
+      });
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const city = cityInput.value.trim();
+      if (!city) return;
+
+      try {
+        // Show loading state
+        cityInput.disabled = true;
+        const submitBtn = form.querySelector('button');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Loading...';
+
+        // Get weather data
+        const data = await getWeatherData(city);
+        
+        document.getElementById("city-name").textContent = `${data.name}, Pakistan`;
+        document.getElementById("temperature").textContent = `${Math.round(data.main.temp)}°C`;
+        document.getElementById("condition").textContent = data.weather[0].description;
+        
+        // Set additional info
+        humidityEl.textContent = `${data.main.humidity}%`;
+        windSpeedEl.textContent = `${data.wind.speed} m/s`;
+        feelsLikeEl.textContent = `${Math.round(data.main.feels_like)}°C`;
+        
+        setWeatherIcon(data.weather[0].main);
+
+        lat = data.coord.lat;
+        lon = data.coord.lon;
+        currentCity = data.name;
+
+        result.style.display = "block";
+        errorMsg.style.display = "none";
+      } catch {
+        result.style.display = "none";
+        errorMsg.style.display = "block";
+      } finally {
+        // Reset button state
+        cityInput.disabled = false;
+        const submitBtn = form.querySelector('button');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Get Weather';
+      }
+    });
+
+    // Add event listener to forecast button - THIS WAS MISSING!
+    forecastBtn.addEventListener("click", () => {
+      if (lat && lon && currentCity) {
+        // Open weather.html with query parameters
+        window.open(`weather.html?lat=${lat}&lon=${lon}&city=${currentCity}`, '_blank');
+      } else {
+        alert("Please search for a city first to see the forecast.");
+      }
+    });
+
+    // Focus on input when page loads
+    window.addEventListener('load', () => {
+      cityInput.focus();
+    });
+  </script>
+</body>
+</html>
